@@ -1,24 +1,25 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import AuthPage from './pages/AuthPage';
+import Dashboard from './pages/Dashboard';
+import StakingPage from './pages/StakingPage';
+import ReferralPage from './pages/ReferralPage';
+import FinancePage from './pages/FinancePage';
+import AdminPanel from './pages/AdminPanel';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/"          element={<LandingPage />} />
+        <Route path="/login"     element={<AuthPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/staking"   element={<StakingPage />} />
+        <Route path="/referral"  element={<ReferralPage />} />
+        <Route path="/finance"   element={<FinancePage />} />
+        <Route path="/admin"     element={<AdminPanel />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
