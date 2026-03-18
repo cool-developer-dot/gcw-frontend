@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="80" fill="#0d1f3c"/>
+  
+  <!-- Outer ring -->
+  <circle cx="256" cy="230" r="160" fill="none" stroke="#2d7dd2" stroke-width="3"/>
+  <circle cx="256" cy="230" r="175" fill="none" stroke="#4fa3e8" stroke-width="1.5" stroke-dasharray="8 5"/>
+  
+  <!-- Globe lines -->
+  <ellipse cx="256" cy="230" rx="160" ry="50" fill="none" stroke="#4fa3e8" stroke-width="1.2" opacity="0.5"/>
+  <ellipse cx="256" cy="230" rx="115" ry="100" fill="none" stroke="#4fa3e8" stroke-width="1.2" opacity="0.5"/>
+  <ellipse cx="256" cy="230" rx="60" ry="150" fill="none" stroke="#4fa3e8" stroke-width="1.2" opacity="0.5"/>
+  <line x1="256" y1="70" x2="256" y2="390" stroke="#4fa3e8" stroke-width="1.2" opacity="0.5"/>
+  <line x1="96" y1="230" x2="416" y2="230" stroke="#4fa3e8" stroke-width="1.2" opacity="0.5"/>
+
+  <!-- Globe fill -->
+  <circle cx="256" cy="230" r="160" fill="#1a3a6b" opacity="0.6"/>
+
+  <!-- GWC text -->
+  <text x="256" y="255" text-anchor="middle" fill="#ffffff" font-family="Arial,sans-serif" font-weight="800" font-size="90" letter-spacing="6">GWC</text>
+
+  <!-- Corner dots -->
+  <circle cx="256" cy="70" r="5" fill="#4fa3e8"/>
+  <circle cx="256" cy="390" r="5" fill="#4fa3e8"/>
+  <circle cx="96" cy="230" r="5" fill="#4fa3e8"/>
+  <circle cx="416" cy="230" r="5" fill="#4fa3e8"/>
+
+  <!-- Bottom tagline -->
+  <text x="256" y="440" text-anchor="middle" fill="#4fa3e8" font-family="Arial,sans-serif" font-weight="400" font-size="22" letter-spacing="3">GLOBAL WEALTH COMMUNITY</text>
+</svg>

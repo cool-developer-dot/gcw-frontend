@@ -2,6 +2,23 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Vercel Deployment Notes
+
+- **Framework**: Create React App
+- **Build Command**: `npm run build`
+- **Output Directory**: `build`
+- **SPA Routing**: `vercel.json` includes a rewrite so refreshing routes works.
+
+### Environment Variables
+
+Create an `.env` file locally (not committed) or configure in Vercel:
+
+- **`REACT_APP_API_URL`**: Backend API base URL (must end with `/api`)
+  - Example local: `http://localhost:5000/api`
+  - Example prod: `https://your-backend-domain.com/api`
+
+See `env.example`.
+
 ## Available Scripts
 
 In the project directory, you can run:

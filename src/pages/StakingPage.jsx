@@ -1,357 +1,548 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createStake, getMyStakes, getWallet } from "../api";
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
+  return (
+    <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, display: "flex", flexDirection: "column", gap: 10 }}>
+      {toasts.map((t) => (
+        <div key={t.id} style={{
+          background: t.type === "success" ? "rgba(22,101,52,0.95)" : t.type === "error" ? "rgba(127,29,29,0.95)" : "rgba(30,41,59,0.95)",
+          color: t.type === "success" ? "#22c55e" : t.type === "error" ? "#ef4444" : "#fff",
+          border: `1px solid ${t.type === "success" ? "#166534" : t.type === "error" ? "#7f1d1d" : "#334155"}`,
+          padding: "12px 20px", borderRadius: 12,
+          fontSize: 14, fontWeight: 600, fontFamily: "Segoe UI,sans-serif",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+          minWidth: 260,
+        }}>{t.msg}</div>
+      ))}
+    </div>
+  );
+}
 
 const GWC_BLUE = "#1a6fd4";
 const GWC_DARK = "#0a0f1e";
 
-const PLANS = [
-  { id: 1, name: "Starter", min: 50, max: 499, daily: 1.5, duration: 30, color: "#0ea5e9", icon: "🌱", badge: "Beginner" },
-  { id: 2, name: "Silver", min: 500, max: 1999, daily: 2.0, duration: 45, color: "#a3a3a3", icon: "🥈", badge: "Popular" },
-  { id: 3, name: "Gold", min: 2000, max: 4999, daily: 2.5, duration: 60, color: "#f59e0b", icon: "🥇", badge: "Best Value" },
-  { id: 4, name: "Platinum", min: 5000, max: 99999, daily: 3.0, duration: 80, color: "#a855f7", icon: "💎", badge: "Premium" },
-];
-
-const ACTIVE_STAKES = [
-  { id: "STK001", plan: "Gold", amount: 500, daily: 5.00, earned: 45.00, startDate: "Dec 01, 2024", endDate: "Jan 30, 2025", progress: 60, status: "Active" },
-  { id: "STK002", plan: "Starter", amount: 200, daily: 2.00, earned: 12.00, startDate: "Dec 15, 2024", endDate: "Feb 14, 2025", progress: 25, status: "Active" },
-  { id: "STK003", plan: "Silver", amount: 1000, daily: 0, earned: 90.00, startDate: "Nov 01, 2024", endDate: "Dec 16, 2024", progress: 100, status: "Completed" },
-];
-
-function StakingPlans({ onSelect }) {
-  const [selected, setSelected] = useState(null);
-
-  return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <h3 style={{ color: "#fff", fontWeight: 900, fontSize: 18, fontFamily: "Georgia,serif", marginBottom: 6 }}>💼 Choose a Staking Plan</h3>
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontFamily: "Segoe UI,sans-serif" }}>Select a plan that fits your investment goal</p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16, marginBottom: 24 }}>
-        {PLANS.map(plan => (
-          <div key={plan.id}
-            onClick={() => { setSelected(plan.id); onSelect(plan); }}
-            style={{
-              background: selected === plan.id ? `${plan.color}15` : "rgba(255,255,255,0.03)",
-              border: `2px solid ${selected === plan.id ? plan.color : "rgba(255,255,255,0.07)"}`,
-              borderRadius: 18, padding: "24px 20px", cursor: "pointer",
-              transition: "all 0.3s", position: "relative", overflow: "hidden"
-            }}
-            onMouseEnter={e => { if (selected !== plan.id) { e.currentTarget.style.borderColor = `${plan.color}60`; e.currentTarget.style.transform = "translateY(-3px)"; } }}
-            onMouseLeave={e => { if (selected !== plan.id) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.transform = "translateY(0)"; } }}
-          >
-            {/* Badge */}
-            <div style={{ position: "absolute", top: 14, right: 14, background: `${plan.color}25`, color: plan.color, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, fontFamily: "Segoe UI,sans-serif" }}>{plan.badge}</div>
-
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{plan.icon}</div>
-            <div style={{ color: "#fff", fontSize: 20, fontWeight: 900, fontFamily: "Georgia,serif", marginBottom: 4 }}>{plan.name}</div>
-            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontFamily: "Segoe UI,sans-serif", marginBottom: 16 }}>
-              ${plan.min.toLocaleString()} — ${plan.max.toLocaleString()}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <div>
-                <div style={{ color: plan.color, fontSize: 22, fontWeight: 900, fontFamily: "Georgia,serif" }}>{plan.daily}%</div>
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontFamily: "Segoe UI,sans-serif" }}>Daily ROI</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ color: "#fff", fontSize: 18, fontWeight: 800, fontFamily: "Georgia,serif" }}>{plan.duration}d</div>
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontFamily: "Segoe UI,sans-serif" }}>Duration</div>
-              </div>
-            </div>
-
-            <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "8px 12px" }}>
-              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: "Segoe UI,sans-serif" }}>
-                Total Return: <span style={{ color: plan.color, fontWeight: 700 }}>{(plan.daily * plan.duration).toFixed(0)}%</span>
-              </div>
-            </div>
-
-            {selected === plan.id && (
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${plan.color},${plan.color}80)` }} />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StakeForm({ plan, onClose }) {
-  const [amount, setAmount] = useState("");
-  const [compound, setCompound] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const numAmount = parseFloat(amount) || 0;
-  const totalReturn = plan ? (numAmount * plan.daily / 100 * plan.duration) : 0;
-  const dailyEarning = plan ? (numAmount * plan.daily / 100) : 0;
-
-  const handleStake = () => {
-    if (!plan || numAmount < plan.min) return;
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setSuccess(true); }, 1500);
-  };
-
-  if (success) {
-    return (
-      <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 18, padding: "32px", textAlign: "center" }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
-        <h3 style={{ color: "#22c55e", fontSize: 20, fontWeight: 900, fontFamily: "Georgia,serif", marginBottom: 8 }}>Stake Successful!</h3>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "Segoe UI,sans-serif", marginBottom: 8 }}>
-          <strong style={{ color: "#fff" }}>${numAmount.toLocaleString()}</strong> staked on <strong style={{ color: "#fff" }}>{plan?.name}</strong> plan
-        </p>
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontFamily: "Segoe UI,sans-serif", marginBottom: 24 }}>
-          You will earn <strong style={{ color: "#22c55e" }}>${dailyEarning.toFixed(2)}/day</strong> for {plan?.duration} days
-        </p>
-        <button onClick={() => { setSuccess(false); setAmount(""); onClose?.(); }} style={{ padding: "12px 32px", borderRadius: 10, background: "linear-gradient(135deg,#1a6fd4,#0d4fa0)", border: "none", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Segoe UI,sans-serif" }}>
-          View Active Stakes →
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "24px 20px" }}>
-      <h3 style={{ color: "#fff", fontWeight: 900, fontSize: 17, fontFamily: "Georgia,serif", marginBottom: 20 }}>
-        {plan ? `Stake on ${plan.name} Plan ${plan.icon}` : "Select a plan above first"}
-      </h3>
-
-      {plan && (
-        <>
-          {/* Amount Input */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: "block", color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600, marginBottom: 8, fontFamily: "Segoe UI,sans-serif" }}>
-              Stake Amount (USDT)
-            </label>
-            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "0 14px", overflow: "hidden" }}>
-              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, marginRight: 8 }}>$</span>
-              <input
-                type="number"
-                placeholder={`Min $${plan.min}`}
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 16, padding: "13px 0", fontFamily: "Segoe UI,sans-serif", fontWeight: 700 }}
-              />
-              <button onClick={() => setAmount(String(plan.max))} style={{ background: "rgba(26,111,212,0.2)", border: "none", color: GWC_BLUE, fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "Segoe UI,sans-serif" }}>MAX</button>
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 6, fontFamily: "Segoe UI,sans-serif" }}>
-              Range: ${plan.min.toLocaleString()} — ${plan.max.toLocaleString()}
-            </div>
-          </div>
-
-          {/* Quick amounts */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
-            {[plan.min, plan.min * 2, plan.min * 5, plan.min * 10].map(v => (
-              <button key={v} onClick={() => setAmount(String(v))} style={{
-                padding: "7px 14px", borderRadius: 8,
-                background: amount == v ? "rgba(26,111,212,0.3)" : "rgba(255,255,255,0.05)",
-                border: `1px solid ${amount == v ? GWC_BLUE : "rgba(255,255,255,0.08)"}`,
-                color: amount == v ? "#5ba3f5" : "rgba(255,255,255,0.5)",
-                fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Segoe UI,sans-serif"
-              }}>${v.toLocaleString()}</button>
-            ))}
-          </div>
-
-          {/* Compound Toggle */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "12px 16px", marginBottom: 18, border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div>
-              <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "Segoe UI,sans-serif" }}>🔄 Compounding</div>
-              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontFamily: "Segoe UI,sans-serif" }}>Auto reinvest daily rewards</div>
-            </div>
-            <div onClick={() => setCompound(!compound)} style={{
-              width: 44, height: 24, borderRadius: 12,
-              background: compound ? GWC_BLUE : "rgba(255,255,255,0.15)",
-              cursor: "pointer", position: "relative", transition: "all 0.3s"
-            }}>
-              <div style={{ position: "absolute", top: 3, left: compound ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "all 0.3s" }} />
-            </div>
-          </div>
-
-          {/* Calculation Preview */}
-          {numAmount >= plan.min && (
-            <div style={{ background: "rgba(26,111,212,0.08)", border: "1px solid rgba(26,111,212,0.2)", borderRadius: 12, padding: "16px", marginBottom: 20 }}>
-              <div style={{ color: "#5ba3f5", fontSize: 13, fontWeight: 700, fontFamily: "Segoe UI,sans-serif", marginBottom: 12 }}>📊 Estimated Returns</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                {[
-                  { label: "Daily", val: `$${dailyEarning.toFixed(2)}` },
-                  { label: `${plan.duration} Days`, val: `$${totalReturn.toFixed(2)}` },
-                  { label: "Total ROI", val: `${(plan.daily * plan.duration).toFixed(0)}%` },
-                ].map((s, i) => (
-                  <div key={i} style={{ textAlign: "center" }}>
-                    <div style={{ color: "#22c55e", fontWeight: 900, fontSize: 15, fontFamily: "Georgia,serif" }}>{s.val}</div>
-                    <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontFamily: "Segoe UI,sans-serif" }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Stake Button */}
-          <button onClick={handleStake} disabled={numAmount < plan.min || loading} style={{
-            width: "100%", padding: "14px", borderRadius: 10,
-            background: numAmount >= plan.min ? "linear-gradient(135deg,#1a6fd4,#0d4fa0)" : "rgba(255,255,255,0.06)",
-            border: "none", color: numAmount >= plan.min ? "#fff" : "rgba(255,255,255,0.3)",
-            fontSize: 15, fontWeight: 700, cursor: numAmount >= plan.min ? "pointer" : "not-allowed",
-            fontFamily: "Segoe UI,sans-serif",
-            boxShadow: numAmount >= plan.min ? "0 6px 20px rgba(26,111,212,0.4)" : "none",
-            transition: "all 0.3s"
-          }}>
-            {loading ? "Processing..." : numAmount < plan.min ? `Minimum $${plan.min}` : `🔒 Stake $${numAmount.toLocaleString()} Now`}
-          </button>
-        </>
-      )}
-
-      {!plan && (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "rgba(255,255,255,0.3)", fontFamily: "Segoe UI,sans-serif", fontSize: 14 }}>
-          👆 Select a plan from above to continue
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActiveStakesList() {
-  const [cancelId, setCancelId] = useState(null);
-
-  return (
-    <div>
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ color: "#fff", fontWeight: 900, fontSize: 18, fontFamily: "Georgia,serif", marginBottom: 6 }}>⚡ My Active Stakes</h3>
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontFamily: "Segoe UI,sans-serif" }}>Track all your running and completed stakes</p>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {ACTIVE_STAKES.map((s, i) => (
-          <div key={i} style={{
-            background: "rgba(255,255,255,0.03)", border: `1px solid ${s.status === "Active" ? "rgba(26,111,212,0.2)" : "rgba(255,255,255,0.06)"}`,
-            borderRadius: 16, padding: "20px", transition: "all 0.3s"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ color: "#fff", fontSize: 18, fontWeight: 900, fontFamily: "Georgia,serif" }}>${s.amount.toLocaleString()}</div>
-                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontFamily: "Segoe UI,sans-serif" }}>{s.plan} Plan</span>
-                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, fontFamily: "Segoe UI,sans-serif" }}>#{s.id}</span>
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, marginTop: 4, fontFamily: "Segoe UI,sans-serif" }}>
-                  {s.startDate} → {s.endDate}
-                </div>
-              </div>
-              <span style={{
-                padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700, fontFamily: "Segoe UI,sans-serif",
-                background: s.status === "Active" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.08)",
-                color: s.status === "Active" ? "#22c55e" : "rgba(255,255,255,0.4)"
-              }}>{s.status}</span>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
-              {[
-                { label: "Daily Reward", val: s.status === "Active" ? `$${s.daily.toFixed(2)}` : "—", color: "#22c55e" },
-                { label: "Total Earned", val: `$${s.earned.toFixed(2)}`, color: "#5ba3f5" },
-                { label: "Progress", val: `${s.progress}%`, color: "#f59e0b" },
-              ].map((stat, j) => (
-                <div key={j} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "12px", textAlign: "center" }}>
-                  <div style={{ color: stat.color, fontWeight: 900, fontSize: 16, fontFamily: "Georgia,serif" }}>{stat.val}</div>
-                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, fontFamily: "Segoe UI,sans-serif", marginTop: 4 }}>{stat.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Progress Bar */}
-            <div style={{ marginBottom: s.status === "Active" ? 14 : 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, fontFamily: "Segoe UI,sans-serif" }}>Progress</span>
-                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: "Segoe UI,sans-serif" }}>{s.progress}%</span>
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 6, height: 8 }}>
-                <div style={{ width: `${s.progress}%`, height: "100%", background: s.progress === 100 ? "#22c55e" : "linear-gradient(90deg,#1a6fd4,#22c55e)", borderRadius: 6, transition: "width 1s ease" }} />
-              </div>
-            </div>
-
-            {/* Early unstake */}
-            {s.status === "Active" && (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => setCancelId(cancelId === s.id ? null : s.id)}
-                  style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Segoe UI,sans-serif" }}>
-                  Early Unstake
-                </button>
-              </div>
-            )}
-
-            {cancelId === s.id && (
-              <div style={{ marginTop: 12, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, padding: "12px 16px" }}>
-                <div style={{ color: "#ef4444", fontSize: 13, fontWeight: 700, fontFamily: "Segoe UI,sans-serif", marginBottom: 8 }}>⚠️ Early Unstake Warning</div>
-                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontFamily: "Segoe UI,sans-serif", marginBottom: 12 }}>
-                  A 10% penalty will be applied on early unstake. You will receive <strong style={{ color: "#fff" }}>${(s.amount * 0.9).toFixed(2)}</strong>
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setCancelId(null)} style={{ flex: 1, padding: "8px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Segoe UI,sans-serif" }}>Cancel</button>
-                  <button style={{ flex: 1, padding: "8px", borderRadius: 8, background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", color: "#ef4444", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Segoe UI,sans-serif" }}>Confirm Unstake</button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const PLAN_COLORS = {
+  Starter: "#22c55e",
+  Silver: "#0ea5e9",
+  Gold: "#f59e0b",
+  Platinum: "#a855f7",
+};
 
 export default function StakingPage() {
+  const navigate = useNavigate();
+  const [myStakes, setMyStakes] = useState([]);
+  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [stakeLoading, setStakeLoading] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [dailyRate, setDailyRate] = useState(1.5);
+  const [duration, setDuration] = useState(30);
   const [tab, setTab] = useState("plans");
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (msg, type = "info") => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("gwc_token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    fetchAll();
+  }, [navigate]);
+
+  const fetchAll = async () => {
+    try {
+      const [stakesRes, walletRes] = await Promise.all([
+        getMyStakes(),
+        getWallet(),
+      ]);
+      setMyStakes(stakesRes.data.stakes || []);
+      setWallet(walletRes.data.wallet);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  const handleStake = async () => {
+    const amt = parseFloat(amount);
+
+    if (!amt || amt <= 0) {
+      showToast("⚠️ Please enter an amount!", "error");
+      return;
+    }
+    if (amt < 10) {
+      showToast("⚠️ Minimum staking amount is $10!", "error");
+      return;
+    }
+    if (wallet && amt > wallet.mainWallet) {
+      showToast("❌ Insufficient wallet balance!", "error");
+      return;
+    }
+    if (!dailyRate || dailyRate <= 0) {
+      showToast("⚠️ Please enter a valid daily rate!", "error");
+      return;
+    }
+    if (duration < 1 || duration > 365) {
+      showToast("⚠️ Duration must be between 1 and 365 days!", "error");
+      return;
+    }
+
+    // Find matching plan based on amount
+    const planName = amt < 500 ? "Starter" : amt < 2000 ? "Silver" : amt < 5000 ? "Gold" : "Platinum";
+
+    setStakeLoading(true);
+    try {
+      await createStake({ plan: planName, amount: amt });
+      showToast("✅ Staking successful! Redirecting to your stakes...", "success");
+      setAmount("");
+      setDailyRate(1.5);
+      setDuration(30);
+      setTimeout(() => setTab("mystakes"), 1500);
+      fetchAll();
+    } catch (err) {
+      showToast("❌ " + (err.response?.data?.message || "Staking failed. Please try again."), "error");
+    }
+    setStakeLoading(false);
+  };
+
+  if (loading)
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: GWC_DARK,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{ color: "#fff", fontSize: 18, fontFamily: "Georgia,serif" }}
+        >
+          ⏳ Loading...
+        </div>
+      </div>
+    );
 
   return (
-    <div style={{ minHeight: "100vh", background: GWC_DARK, padding: "20px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: 28 }}>
-          <h2 style={{ color: "#fff", fontSize: 24, fontWeight: 900, fontFamily: "Georgia,serif", marginBottom: 6 }}>💰 Staking Module</h2>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, fontFamily: "Segoe UI,sans-serif" }}>Stake your USDT and earn daily passive rewards</p>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: GWC_DARK,
+        color: "#fff",
+        fontFamily: "Segoe UI,sans-serif",
+      }}
+    >
+      <Toast toasts={toasts} />
+      {/* Header */}
+      <div
+        style={{
+          background: "rgba(6,10,21,0.9)",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+        }}
+      >
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            background: "none",
+            border: "none",
+            color: "rgba(255,255,255,0.5)",
+            cursor: "pointer",
+            fontSize: 20,
+          }}
+        >
+          ←
+        </button>
+        <div>
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: "#fff",
+              fontFamily: "Georgia,serif",
+            }}
+          >
+            💰 Staking
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+            Wallet: ${wallet?.mainWallet?.toFixed(2) || "0.00"}
+          </div>
         </div>
+      </div>
 
-        {/* Summary */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 14, marginBottom: 28 }}>
-          {[
-            { icon: "🔒", label: "Total Staked", val: "$700.00", color: "#1a6fd4" },
-            { icon: "📈", label: "Daily Earning", val: "$7.00", color: "#22c55e" },
-            { icon: "💸", label: "Total Earned", val: "$147.00", color: "#f59e0b" },
-            { icon: "⚡", label: "Active Stakes", val: "2", color: "#a855f7" },
-          ].map((s, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}25`, borderRadius: 14, padding: "16px 14px" }}>
-              <div style={{ fontSize: 22, marginBottom: 8 }}>{s.icon}</div>
-              <div style={{ color: s.color, fontWeight: 900, fontSize: 20, fontFamily: "Georgia,serif" }}>{s.val}</div>
-              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontFamily: "Segoe UI,sans-serif", marginTop: 4 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
+      <div style={{ padding: "20px", maxWidth: 900, margin: "0 auto" }}>
         {/* Tabs */}
-        <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, marginBottom: 28, border: "1px solid rgba(255,255,255,0.06)", width: "fit-content", gap: 4 }}>
+        <div
+          style={{
+            display: "flex",
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: 12,
+            padding: 4,
+            marginBottom: 24,
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
           {[
-            { id: "plans", label: "📋 Stake Now" },
-            { id: "active", label: "⚡ My Stakes" },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              padding: "10px 22px", borderRadius: 9,
-              background: tab === t.id ? "linear-gradient(135deg,#1a6fd4,#0d4fa0)" : "transparent",
-              border: "none", color: tab === t.id ? "#fff" : "rgba(255,255,255,0.4)",
-              fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Segoe UI,sans-serif",
-              transition: "all 0.3s"
-            }}>{t.label}</button>
+            ["plans", "📊 Stake Now"],
+            ["mystakes", "⚡ My Stakes"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: 9,
+                background:
+                  tab === id
+                    ? "linear-gradient(135deg,#1a6fd4,#0d4fa0)"
+                    : "transparent",
+                border: "none",
+                color: tab === id ? "#fff" : "rgba(255,255,255,0.4)",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "Segoe UI,sans-serif",
+              }}
+            >
+              {label}
+            </button>
           ))}
         </div>
 
-        {/* Content */}
-        {tab === "plans" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-            <StakingPlans onSelect={setSelectedPlan} />
-            <StakeForm plan={selectedPlan} onClose={() => setTab("active")} />
+        {tab === "plans" && (() => {
+          const amt = parseFloat(amount || 0);
+          const daily = (amt * dailyRate) / 100;
+          const total = daily * duration;
+
+          return (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={{
+                background: "#0d1f3c",
+                borderRadius: 16,
+                padding: "1.5rem",
+                width: "100%",
+                maxWidth: 680,
+                border: "1px solid #1e3a5f",
+              }}>
+                {/* Title + Balance */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Stake Now</div>
+                  <div style={{ fontSize: 13, color: "#7fa8cc" }}>
+                    Balance: <span style={{ color: "#00c8ff", fontWeight: 700 }}>${wallet?.mainWallet?.toFixed(2) || "0.00"}</span>
+                  </div>
+                </div>
+
+                {/* Amount Input */}
+                <div style={{ fontSize: 13, color: "#7fa8cc", marginBottom: 6 }}>Amount (USDT)</div>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="Enter amount..."
+                  style={{
+                    width: "100%", padding: "12px 16px",
+                    background: "#0a1628", border: "1px solid #1e3a5f",
+                    borderRadius: 10, color: "#fff", fontSize: 15,
+                    outline: "none", boxSizing: "border-box",
+                    fontFamily: "Segoe UI,sans-serif", marginBottom: 14,
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#00c8ff"}
+                  onBlur={e => e.target.style.borderColor = "#1e3a5f"}
+                />
+
+                {/* Daily Rate + Duration Row */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 13, color: "#7fa8cc", marginBottom: 6 }}>Daily Rate (%)</div>
+                    <input
+                      type="number"
+                      value={dailyRate}
+                      onChange={e => setDailyRate(parseFloat(e.target.value) || 0)}
+                      step="0.1" min="0.1" max="10"
+                      style={{
+                        width: "100%", padding: "12px 16px",
+                        background: "#0a1628", border: "1px solid #1e3a5f",
+                        borderRadius: 10, color: "#00c8ff", fontSize: 15, fontWeight: 700,
+                        outline: "none", boxSizing: "border-box", fontFamily: "Segoe UI,sans-serif",
+                      }}
+                      onFocus={e => e.target.style.borderColor = "#00c8ff"}
+                      onBlur={e => e.target.style.borderColor = "#1e3a5f"}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, color: "#7fa8cc", marginBottom: 6 }}>Duration (Days)</div>
+                    <input
+                      type="number"
+                      value={duration}
+                      onChange={e => setDuration(parseInt(e.target.value) || 0)}
+                      min="1" max="365"
+                      style={{
+                        width: "100%", padding: "12px 16px",
+                        background: "#0a1628", border: "1px solid #1e3a5f",
+                        borderRadius: 10, color: "#00c8ff", fontSize: 15, fontWeight: 700,
+                        outline: "none", boxSizing: "border-box", fontFamily: "Segoe UI,sans-serif",
+                      }}
+                      onFocus={e => e.target.style.borderColor = "#00c8ff"}
+                      onBlur={e => e.target.style.borderColor = "#1e3a5f"}
+                    />
+                  </div>
+                </div>
+
+                {/* Earnings Info Box */}
+                <div style={{
+                  background: "#0a1628", borderRadius: 10,
+                  padding: "14px 16px", marginBottom: 14,
+                  border: "1px solid #1e3a5f",
+                }}>
+                  <div style={{ fontSize: 12, color: "#7fa8cc", marginBottom: 4 }}>Daily Earnings:</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: "#00c8ff" }}>
+                    {amt > 0 ? `$${daily.toFixed(2)}/day` : "$0.00/day"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#7fa8cc", marginTop: 4 }}>
+                    {amt > 0
+                      ? `Total: $${total.toFixed(2)} in ${duration} days`
+                      : "Enter amount to see earnings"}
+                  </div>
+                </div>
+
+                {/* Balance Warning */}
+                {amt > (wallet?.mainWallet || 0) && amt > 0 && (
+                  <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, color: "#ef4444", fontSize: 13 }}>
+                    ⚠️ Insufficient balance! Pehle deposit karo.
+                  </div>
+                )}
+
+                {/* Stake Button */}
+                <button
+                  onClick={handleStake}
+                  disabled={stakeLoading}
+                  style={{
+                    width: "100%", padding: 14,
+                    background: "linear-gradient(90deg,#00a8e8,#00c8ff)",
+                    border: "none", borderRadius: 10,
+                    color: "#fff", fontSize: 15, fontWeight: 700,
+                    cursor: "pointer", transition: "opacity 0.2s",
+                    fontFamily: "Segoe UI,sans-serif",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                  onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                >
+                  {stakeLoading ? "⏳ Processing..." : "🚀 Stake Now"}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+                {tab === "mystakes" && (
+          <div>
+            {myStakes.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "48px",
+                  color: "rgba(255,255,255,0.3)",
+                }}
+              >
+                <div style={{ fontSize: 48, marginBottom: 16 }}>💰</div>
+                <div style={{ fontSize: 16, fontFamily: "Georgia,serif" }}>
+                  No active stakes yet
+                </div>
+                <button
+                  onClick={() => setTab("plans")}
+                  style={{
+                    marginTop: 16,
+                    padding: "10px 24px",
+                    borderRadius: 10,
+                    background: GWC_BLUE,
+                    border: "none",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Start Staking
+                </button>
+              </div>
+            ) : (
+              myStakes.map((s, i) => {
+                const start = new Date(s.startDate);
+                const end = new Date(s.endDate);
+                const now = new Date();
+                const progress = Math.min(
+                  100,
+                  Math.round(((now - start) / (end - start)) * 100),
+                );
+                const color = PLAN_COLORS[s.plan] || GWC_BLUE;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: `1px solid ${color}25`,
+                      borderRadius: 16,
+                      padding: "18px",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div>
+                        <span
+                          style={{
+                            color: "#fff",
+                            fontWeight: 800,
+                            fontSize: 16,
+                            fontFamily: "Georgia,serif",
+                          }}
+                        >
+                          ${s.amount.toLocaleString()}
+                        </span>
+                        <span
+                          style={{
+                            color: "rgba(255,255,255,0.4)",
+                            fontSize: 12,
+                            marginLeft: 8,
+                          }}
+                        >
+                          {s.plan} Plan
+                        </span>
+                      </div>
+                      <span
+                        style={{
+                          background:
+                            s.status === "active"
+                              ? "rgba(34,197,94,0.15)"
+                              : "rgba(255,255,255,0.08)",
+                          color: s.status === "active" ? "#22c55e" : "#fff",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "4px 12px",
+                          borderRadius: 20,
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {s.status}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3,1fr)",
+                        gap: 12,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            color: "#22c55e",
+                            fontWeight: 800,
+                            fontFamily: "Georgia,serif",
+                          }}
+                        >
+                          ${s.dailyReward?.toFixed(2)}
+                        </div>
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.3)",
+                            fontSize: 11,
+                          }}
+                        >
+                          Daily
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            color: "#5ba3f5",
+                            fontWeight: 800,
+                            fontFamily: "Georgia,serif",
+                          }}
+                        >
+                          ${s.earnedSoFar?.toFixed(2)}
+                        </div>
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.3)",
+                            fontSize: 11,
+                          }}
+                        >
+                          Earned
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.7)",
+                            fontWeight: 800,
+                            fontFamily: "Georgia,serif",
+                          }}
+                        >
+                          {new Date(s.endDate).toLocaleDateString()}
+                        </div>
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.3)",
+                            fontSize: 11,
+                          }}
+                        >
+                          End Date
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        background: "rgba(255,255,255,0.07)",
+                        borderRadius: 4,
+                        height: 6,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${progress}%`,
+                          height: "100%",
+                          background: `linear-gradient(90deg,${color},#22c55e)`,
+                          borderRadius: 4,
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.3)",
+                        marginTop: 4,
+                      }}
+                    >
+                      {progress}% complete
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
-
-        {tab === "active" && <ActiveStakesList />}
       </div>
     </div>
   );
